@@ -1,0 +1,567 @@
+{
+  "info": {
+    "name": "WebDenial API Collection",
+    "description": "Complete API collection for WebDenial application",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "sessionId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "messageId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Basic Echo",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"test\": \"Hello World\",\n  \"timestamp\": \"2024-01-01T00:00:00Z\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/echo",
+          "host": ["{{baseUrl}}"],
+          "path": ["echo"]
+        },
+        "description": "Basic echo endpoint that returns data after 15ms delay"
+      },
+      "response": []
+    },
+    {
+      "name": "Access Routes",
+      "item": [
+        {
+          "name": "Access - Create Session",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.collectionVariables.set('sessionId', responseJson.sessionId);",
+                  "    console.log('Session ID saved:', responseJson.sessionId);",
+                  "    pm.test('Session ID is returned', function () {",
+                  "        pm.expect(responseJson.sessionId).to.be.a('string');",
+                  "        pm.expect(responseJson.sessionId).to.have.length.greaterThan(0);",
+                  "    });",
+                  "} else if (pm.response.code === 403) {",
+                  "    pm.test('IP is blocked', function () {",
+                  "        pm.expect(responseJson.error).to.be.true;",
+                  "        pm.expect(responseJson.code).to.equal('BLOCKED');",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/access",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "access"]
+            },
+            "description": "Create a new session and get sessionId. Returns 403 if IP is blocked."
+          },
+          "response": []
+        },
+        {
+          "name": "Access - Create Multiple Sessions",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.test('Multiple sessions have different IDs', function () {",
+                  "        const currentSessionId = responseJson.sessionId;",
+                  "        const previousSessionId = pm.collectionVariables.get('previousSessionId');",
+                  "        if (previousSessionId) {",
+                  "            pm.expect(currentSessionId).to.not.equal(previousSessionId);",
+                  "        }",
+                  "        pm.collectionVariables.set('previousSessionId', currentSessionId);",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/access",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "access"]
+            },
+            "description": "Create multiple sessions to test session uniqueness"
+          },
+          "response": []
+        },
+        {
+          "name": "Access - Rate Limit Test",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Rate limit response time', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(1000);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.test('Session created successfully', function () {",
+                  "        pm.expect(responseJson.sessionId).to.be.a('string');",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/access",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "access"]
+            },
+            "description": "Test access endpoint for rate limiting and performance"
+          },
+          "response": []
+        }
+      ],
+      "description": "Access route endpoints for session management"
+    },
+    {
+      "name": "Message - Send Message",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"sessionId\": \"{{sessionId}}\",\n  \"body\": \"Hello, this is a test message!\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/message",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "message"]
+        },
+        "description": "Send a message with sessionId and body"
+      },
+      "response": []
+    },
+    {
+      "name": "Message - Send Message (Custom)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"sessionId\": \"{{sessionId}}\",\n  \"body\": \"{{$randomLoremSentence}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/message",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "message"]
+        },
+        "description": "Send a message with random Lorem text"
+      },
+      "response": []
+    },
+    {
+      "name": "Message - Get Echo",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "    const responseJson = pm.response.json();",
+              "    pm.collectionVariables.set('messageId', responseJson.messageId);",
+              "    console.log('Message ID saved:', responseJson.messageId);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/message/echo?sessionId={{sessionId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "message", "echo"],
+          "query": [
+            {
+              "key": "sessionId",
+              "value": "{{sessionId}}"
+            }
+          ]
+        },
+        "description": "Get the latest unechoed message for a session"
+      },
+      "response": []
+    },
+    {
+      "name": "Message - Retrieve Latest",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/message/retrieve?sessionId={{sessionId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "message", "retrieve"],
+          "query": [
+            {
+              "key": "sessionId",
+              "value": "{{sessionId}}"
+            }
+          ]
+        },
+        "description": "Retrieve the latest message (echoed or not) for a session"
+      },
+      "response": []
+    },
+    {
+      "name": "Error Tests",
+      "item": [
+        {
+          "name": "Access Routes - Error Tests",
+          "item": [
+            {
+              "name": "Access - Test with Invalid Method",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/access",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "access"]
+                },
+                "description": "Test access endpoint with wrong HTTP method (GET instead of POST)"
+              },
+              "response": []
+            },
+            {
+              "name": "Access - Test with Body Content",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"unnecessary\": \"data\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/access",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "access"]
+                },
+                "description": "Test access endpoint with body content (should still work)"
+              },
+              "response": []
+            }
+          ],
+          "description": "Error tests specific to access routes"
+        },
+        {
+          "name": "Message - Missing sessionId",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"This should fail\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/message",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "message"]
+            },
+            "description": "Test error handling - missing sessionId"
+          },
+          "response": []
+        },
+        {
+          "name": "Message - Missing body",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sessionId\": \"{{sessionId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/message",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "message"]
+            },
+            "description": "Test error handling - missing body"
+          },
+          "response": []
+        },
+        {
+          "name": "Message - Invalid sessionId",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sessionId\": \"invalid-session-id\",\n  \"body\": \"This should fail\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/message",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "message"]
+            },
+            "description": "Test error handling - invalid sessionId"
+          },
+          "response": []
+        },
+        {
+          "name": "Echo - Missing sessionId",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/message/echo",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "message", "echo"]
+            },
+            "description": "Test error handling - missing sessionId query param"
+          },
+          "response": []
+        },
+        {
+          "name": "Retrieve - Missing sessionId",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/message/retrieve",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "message", "retrieve"]
+            },
+            "description": "Test error handling - missing sessionId query param"
+          },
+          "response": []
+        }
+      ],
+      "description": "Collection of error test cases"
+    },
+    {
+      "name": "Workflow Tests",
+      "item": [
+        {
+          "name": "Complete Workflow - Send and Echo",
+          "item": [
+            {
+              "name": "1. Create Session",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "    const responseJson = pm.response.json();",
+                      "    pm.collectionVariables.set('sessionId', responseJson.sessionId);",
+                      "    console.log('Step 1 - Session ID saved:', responseJson.sessionId);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/access",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "access"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "2. Send Message",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "    const responseJson = pm.response.json();",
+                      "    pm.collectionVariables.set('messageId', responseJson.messageId);",
+                      "    console.log('Step 2 - Message sent, ID:', responseJson.messageId);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"sessionId\": \"{{sessionId}}\",\n  \"body\": \"Complete workflow test message\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/message",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "message"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "3. Get Echo",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "console.log('Step 3 - Echo response:', pm.response.json());"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/message/echo?sessionId={{sessionId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "message", "echo"],
+                  "query": [
+                    {
+                      "key": "sessionId",
+                      "value": "{{sessionId}}"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "4. Retrieve Latest",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "console.log('Step 4 - Latest message:', pm.response.json());"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/message/retrieve?sessionId={{sessionId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "message", "retrieve"],
+                  "query": [
+                    {
+                      "key": "sessionId",
+                      "value": "{{sessionId}}"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            }
+          ],
+          "description": "Complete workflow: Create session → Send message → Get echo → Retrieve latest"
+        }
+      ],
+      "description": "Workflow and integration tests"
+    }
+  ]
+}
