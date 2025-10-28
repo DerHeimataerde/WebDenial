@@ -5,6 +5,7 @@ import random
 import argparse
 from concurrent.futures import ThreadPoolExecutor
 import sys
+import statistics
 
 class APIAttacker:
     def __init__(self, base_url="http://localhost:3000", randomize_ip=False):
@@ -47,20 +48,24 @@ class APIAttacker:
         """Attack the /echo endpoint"""
         print(f"\n🎯 Attacking /echo endpoint {count} times...")
         successful = 0
+        latencies = []
         
         for i in range(count):
             try:
                 payload = {"attack": f"payload_{i}", "timestamp": time.time()}
+                start = time.perf_counter()
                 response = requests.post(
                     f"{self.base_url}/echo",
                     json=payload,
                     headers=self.get_headers(),
                     timeout=5
                 )
+                latency = time.perf_counter() - start
+                latencies.append(latency)
                 
                 if response.status_code == 200:
                     successful += 1
-                    print(f"  [{i+1}/{count}] ✓ Echo response received")
+                    print(f"  [{i+1}/{count}] ✓ Echo response received (latency={latency:.4f}s)")
                 else:
                     print(f"  [{i+1}/{count}] ✗ Failed: {response.status_code}")
                     
@@ -68,6 +73,10 @@ class APIAttacker:
                 print(f"  [{i+1}/{count}] ✗ Error: {e}")
         
         print(f"Echo attack complete: {successful}/{count} successful")
+        if latencies:
+            print("Echo latency (s): min={:.4f}, avg={:.4f}, median={:.4f}, max={:.4f}".format(
+                min(latencies), statistics.mean(latencies), statistics.median(latencies), max(latencies)
+            ))
     
     def attack_message(self, count=10):
         """Attack the /api/message endpoint"""
@@ -108,30 +117,42 @@ class APIAttacker:
     def attack_concurrent(self, endpoint="echo", count=20, threads=5):
         """Launch concurrent attacks"""
         print(f"\n🚀 Launching concurrent attack on /{endpoint} with {threads} threads...")
-        
         def single_attack():
-            response = None
-            if endpoint == "echo":
-                payload = {"concurrent": True, "timestamp": time.time()}
-                url = f"{self.base_url}/echo"
-                response = requests.post(url, json=payload, headers=self.get_headers(), timeout=5)
-            elif endpoint == "message":
-                if not self.session_id:
-                    return False
-                payload = {"sessionId": self.session_id, "body": f"Concurrent attack {time.time()}"}
-                url = f"{self.base_url}/api/message"
-                response = requests.post(url, json=payload, headers=self.get_headers(), timeout=5)
-            
-            return response is not None and response.status_code == 200
+            """Perform a single attack and return (success:bool, latency:float|None)"""
+            try:
+                start = time.perf_counter()
+                response = None
+                if endpoint == "echo":
+                    payload = {"concurrent": True, "timestamp": time.time()}
+                    url = f"{self.base_url}/echo"
+                    response = requests.post(url, json=payload, headers=self.get_headers(), timeout=5)
+                elif endpoint == "message":
+                    if not self.session_id:
+                        return (False, None)
+                    payload = {"sessionId": self.session_id, "body": f"Concurrent attack {time.time()}"}
+                    url = f"{self.base_url}/api/message"
+                    response = requests.post(url, json=payload, headers=self.get_headers(), timeout=5)
+
+                latency = time.perf_counter() - start
+                return (response is not None and response.status_code == 200, latency)
+            except Exception:
+                return (False, None)
         
         if endpoint == "message" and not self.session_id:
             self.create_session()
         
         with ThreadPoolExecutor(max_workers=threads) as executor:
             futures = [executor.submit(single_attack) for _ in range(count)]
-            successful = sum(1 for future in futures if future.result())
-        
+            results = [future.result() for future in futures]
+
+        successful = sum(1 for success, _ in results if success)
+        latencies = [lat for _, lat in results if lat is not None]
+
         print(f"Concurrent attack complete: {successful}/{count} successful")
+        if latencies:
+            print("Concurrent latency (s): min={:.4f}, avg={:.4f}, median={:.4f}, max={:.4f}".format(
+                min(latencies), statistics.mean(latencies), statistics.median(latencies), max(latencies)
+            ))
 
 def main():
     parser = argparse.ArgumentParser(description="API Attack Script for Testing DoS Protection")
