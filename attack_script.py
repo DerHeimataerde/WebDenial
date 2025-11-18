@@ -8,10 +8,11 @@ import sys
 import statistics
 
 class APIAttacker:
-    def __init__(self, base_url="http://localhost:3000", randomize_ip=False):
+    def __init__(self, base_url="http://localhost:3000", randomize_ip=False, delay=0):
         self.base_url = base_url
         self.randomize_ip = randomize_ip
         self.session_id = None
+        self.delay = delay
         
     def generate_random_ip(self):
         """Generate a random IP address"""
@@ -71,6 +72,10 @@ class APIAttacker:
                     
             except Exception as e:
                 print(f"  [{i+1}/{count}] ✗ Error: {e}")
+            
+            # Apply delay between requests if specified
+            if self.delay > 0 and i < count - 1:
+                time.sleep(self.delay)
         
         print(f"Echo attack complete: {successful}/{count} successful")
         if latencies:
@@ -111,6 +116,10 @@ class APIAttacker:
                     
             except Exception as e:
                 print(f"  [{i+1}/{count}] ✗ Error: {e}")
+            
+            # Apply delay between requests if specified
+            if self.delay > 0 and i < count - 1:
+                time.sleep(self.delay)
         
         print(f"Message attack complete: {successful}/{count} successful")
     
@@ -172,7 +181,7 @@ def main():
     print(f"Endpoint: {args.endpoint}")
     print("-" * 50)
     
-    attacker = APIAttacker(args.url, args.randomize_ip)
+    attacker = APIAttacker(args.url, args.randomize_ip, args.delay)
     
     try:
         if args.concurrent:
